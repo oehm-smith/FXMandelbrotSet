@@ -20,18 +20,14 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import Graphics.Canvas;
-import javafx.beans.InvalidationListener;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
+import Model.Model;
+import View.View;
 import javafx.geometry.Point2D;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.input.MouseDragEvent;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.TransferMode;
 import javafx.scene.layout.VBox;
 import org.apache.commons.math3.complex.Complex;
 
@@ -41,6 +37,8 @@ import org.apache.commons.math3.complex.Complex;
  */
 public class MandelbrotSet extends Application {
 
+    Model model;
+    View view;
     private static int START_X = 100;
     private static int START_Y = 100;
     private static int WIDTH = 400;
@@ -63,135 +61,64 @@ public class MandelbrotSet extends Application {
     double mset_width = 1.0;    // How wide the mandelbrot set is
     double mset_height = 1.0;   // How High the mandelbrot set is
 
-    public double getMSet_width() {
-        return mset_width;
-    }
-
-    public void setMSet_width(double set_width) {
-        this.mset_width = set_width;
-    }
-
-    public double getMSet_height() {
-        return mset_height;
-    }
-
-    public void setMSet_height(double set_height) {
-        this.mset_height = set_height;
-    }
-
     public MandelbrotSet() {
-    }
-
-    public double getX() {
-        return x;
-    }
-
-    public void setX(double x) {
-        this.x = x;
-    }
-
-    public double getY() {
-        return y;
-    }
-
-    public void setY(double y) {
-        this.y = y;
-    }
-
-    public double getFactor() {
-        return factor;
-    }
-
-    public void setFactor(double factor) {
-        this.factor = factor;
-    }
-
-    public int getIters() {
-        return iters;
-    }
-
-    public void setIters(int iters) {
-        this.iters = iters;
     }
 
     @Override
     public void start(final Stage primaryStage) {
+        model = new Model();
+        view = new View(model);
+
         primaryStage.setTitle("Animated Plasma");
         primaryStage.setWidth(600);
         primaryStage.setHeight(800);
-
-        final Group group = new Group();
-
-        Text text = new Text();
-        text.setText("Mandelbrot Set");
-        text.setFill(Color.YELLOW);
-        text.setFont(javafx.scene.text.Font.font("Arial BOLD", 24.0));
-        text.setEffect(new DropShadow());
-        text.xProperty().bind(primaryStage.widthProperty()
-                .subtract(text.layoutBoundsProperty().getValue().getWidth())
-                .divide(2));
-        text.setY(30.0);
-        text.setTextOrigin(VPos.TOP);
-        //group.getChildren().add(text);
-
-        //progress = new ProgressBar();
-
-        Label labelx = new Label("x");
-        final TextField textx = new TextField();
-        textx.setMaxWidth(80.0);
-        textx.setText(Double.toString(getX()));
-
-        Label labely = new Label("y");
-        final TextField texty = new TextField();
-        texty.setMaxWidth(80.0);
-        texty.setText(Double.toString(getY()));
-
-        Label labelfactor = new Label("Factor");
-        final TextField textfactor = new TextField();
-        textfactor.setMaxWidth(80.0);
-        textfactor.setText(Double.toString(getFactor()));
-
-        Label labelIters = new Label("Iterations");
-        final TextField textIters = new TextField();
-        textIters.setMaxWidth(80.0);
-        textIters.setText(Integer.toString(getIters()));
+        hookupEvents();
+        primaryStage.setScene(view.scene);
+        primaryStage.setResizable(true);
+        primaryStage.show();
 
 
-        Button updateButton = new Button("Update");
-        updateButton.setOnAction(new EventHandler() {
+        final PauseTransition pt = new PauseTransition(Duration.millis(3));
+        pt.setCycleCount(1);
+        pt.setOnFinished(new EventHandler() {
             @Override
             public void handle(Event t) {
-                double newX = Double.parseDouble(textx.getText());
-                double newY = Double.parseDouble(texty.getText());
-                double newFactor = Double.parseDouble(textfactor.getText());
-                int newIters = Integer.parseInt(textIters.getText());
-                if (newX != getX() || newY != getY() || newFactor != getFactor() || newIters != getIters()) {
-                    setX(newX);
-                    setY(newY);
-                    setFactor(newFactor);
-                    setIters(newIters);
+                update(view.canvas);
+                pt.play();
+            }
+        });
+        pt.play();
+    }
+
+    private void hookupEvents() {
+        view.updateButton.setOnAction(new EventHandler() {
+            @Override
+            public void handle(Event t) {
+                double newX = Double.parseDouble(view.textx.getText());
+                double newY = Double.parseDouble(view.texty.getText());
+                double newFactor = Double.parseDouble(view.textfactor.getText());
+                int newIters = Integer.parseInt(view.textIters.getText());
+                if (newX != model.getX() || newY != model.getY() || newFactor != model.getFactor() || newIters != model.getIters()) {
+                    model.setX(newX);
+                    model.setY(newY);
+                    model.setFactor(newFactor);
+                    model.setIters(newIters);
                     sceneChanged = true;
                 }
             }
         });
-        VBox vbox = new VBox(8);
-        vbox.getChildren().addAll(labelx, textx, labely, texty, labelfactor, textfactor, labelIters, textIters, updateButton);
-        group.getChildren().addAll(text, vbox);
 
-
-        final Canvas canvas = new Canvas(START_X, START_Y, WIDTH, HEIGHT);
-
-        canvas.setOnDragDetected(new EventHandler() {
+        view.canvas.setOnDragDetected(new EventHandler() {
             // Activate the Drag Event
             @Override
             public void handle(Event t) {
                 System.out.println("DragDetected ");
-                canvas.startFullDrag();
+                view.canvas.startFullDrag();
                 t.consume();
             }
         });
 
-        canvas.setOnMouseDragEntered(new EventHandler<MouseDragEvent>() {
+        view.canvas.setOnMouseDragEntered(new EventHandler<MouseDragEvent>() {
             // Where the drag starts
             @Override
             public void handle(MouseDragEvent t) {
@@ -199,67 +126,22 @@ public class MandelbrotSet extends Application {
                 mouseDragFirstPoint = new Point2D(t.getX(), t.getY());
             }
         });
-        canvas.setOnMouseDragReleased(new EventHandler<MouseDragEvent>() {
+        view.canvas.setOnMouseDragReleased(new EventHandler<MouseDragEvent>() {
             // Where the drag ends
             @Override
             public void handle(MouseDragEvent t) {
                 System.out.println("OnMouseDragReleased - event: " + t.getEventType() + ", x:" + t.getX() + ", y:" + t.getY());
                 // Calculate the new x and y points:
                 // Previous Mandelbrot Set's width and height / canvas' width and height * (left/upper-most) mouse drag x/y + last x/y
-                setX(((getMSet_width() / WIDTH) * mouseDragFirstPoint.getX()) + getX());
-                setX(((getMSet_height() / HEIGHT) * mouseDragFirstPoint.getY()) + getY());
+                model.setX(((model.getMSet_width() / WIDTH) * mouseDragFirstPoint.getX()) + model.getX());
+                model.setX(((model.getMSet_height() / HEIGHT) * mouseDragFirstPoint.getY()) + model.getY());
                 // Calculate the new width of the Mandelbrot Set to draw.  Its the width / height selected over the
                 // canvas' width and height proportion of the previous Mandelbrot Set's width and height
-                setMSet_height(getMSet_height() * (Math.abs(t.getY() - mouseDragFirstPoint.getY()) / (double) HEIGHT));
-                setMSet_width(getMSet_width() * (Math.abs(t.getX() - mouseDragFirstPoint.getX()) / (double) WIDTH));
+                model.setMSet_height(model.getMSet_height() * (Math.abs(t.getY() - mouseDragFirstPoint.getY()) / (double) HEIGHT));
+                model.setMSet_width(model.getMSet_width() * (Math.abs(t.getX() - mouseDragFirstPoint.getX()) / (double) WIDTH));
                 sceneChanged = true;
             }
         });
-
-        group.getChildren().add(canvas);
-
-        group.setEffect(ReflectionBuilder.create().input(new DropShadow()).build());  // 10.0, Color.GRAY
-
-        LinearGradient lg = new LinearGradient(0.0, 0.0, 0.0, 1.0, true,
-                CycleMethod.REFLECT,
-                new Stop(0, Color.GREEN),
-                new Stop(0.5, Color.GREENYELLOW), new Stop(1.0, Color.YELLOW));
-        Scene scene = new Scene(group, lg);
-        primaryStage.setScene(scene);
-
-        primaryStage.setResizable(true);
-        primaryStage.show();
-
-        setup(canvas);
-
-        final PauseTransition pt = new PauseTransition(Duration.millis(3));
-        pt.setCycleCount(1);
-        pt.setOnFinished(new EventHandler() {
-            @Override
-            public void handle(Event t) {
-                update(canvas);
-                pt.play();
-            }
-        });
-        pt.play();
-    }
-
-    void setup(Canvas canvas) {
-        palette = new int[512];
-        for (int i = 0; i < palette.length; i++) {
-            Color color = Color.hsb(i / 255.0 * 360, 1.0, 1.0);
-            int red = (int) (color.getRed() * 255);
-            int grn = (int) (color.getGreen() * 255);
-            int blu = (int) (color.getBlue() * 255);
-            palette[i] = (red << 16) | (grn << 8) | blu;
-        }
-
-        plasma = new byte[canvas.getHeight()][];
-        for (int i = 0; i < plasma.length; i++) {
-            plasma[i] = new byte[canvas.getWidth()];
-        }
-
-        colors = new int[canvas.getWidth() * canvas.getHeight()];
     }
 
     void update(final Canvas canvas) {
@@ -274,12 +156,12 @@ public class MandelbrotSet extends Application {
 //        int normaliseIters = 0;
 //        int divider = 10;
 //        int blogee = MAX_ITERS;
-        double x = getX();//-0.2;
-        double xstepfactor = getFactor();//0.2;
+        double x = model.getX();//-0.2;
+        double xstepfactor = model.getFactor();//0.2;
         double stepx = mset_width / width * xstepfactor;
-        double y = getY();//-0.2;
+        double y = model.getY();//-0.2;
         double stepy = mset_height / height * xstepfactor;
-        int iters = getIters();
+        int iters = model.getIters();
         Color msColor = null;
 //        int maxProgress = (int) (width * height);
 //        int progressStep = 0;
@@ -328,7 +210,7 @@ public class MandelbrotSet extends Application {
                 x += stepx;
             }
             y += stepy;
-            x = getX();
+            x = model.getX();
             times = 410;
         }
         sceneChanged = false;
@@ -346,9 +228,9 @@ public class MandelbrotSet extends Application {
         if (depth > MAX_ITERS || depth == 0) {
             mscolor = Color.BLACK;
         } else {
-            double red = (double) depth / getIters() * 255;
-            double green = (double) depth / getIters() * 200;
-            double blue = (double) depth / getIters() * 100;
+            double red = (double) depth / model.getIters() * 255;
+            double green = (double) depth / model.getIters() * 200;
+            double blue = (double) depth / model.getIters() * 100;
             //mscolor = new Color(red, green, blue, 1.0);
             mscolor = Color.rgb((int) red, (int) green, (int) blue, 0.4);
         }

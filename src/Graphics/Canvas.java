@@ -14,15 +14,19 @@ public class Canvas extends Group {
 
     public Canvas(int x, int y, int width, int height) {
         pixels = new Line[height][];
-        for (int row = 0; row < width; row++) {
+        for (int row = 0; row < height; row++) {    // width
             pixels[row] = new Line[width];
-            for (int col = 0; col < height; col++) {
+            for (int col = 0; col < width; col++) { // height
                 pixels[row][col] = new Line(x + col, y + row, x + col, y + row);
             }
             getChildren().addAll(pixels[row]);
         }
     }
 
+    public void setPixelsData(Line[][] pixels) {
+        this.pixels = pixels;
+    }
+    
     public int getHeight() {
         return pixels.length;
     }
