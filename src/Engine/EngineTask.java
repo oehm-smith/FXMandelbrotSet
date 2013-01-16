@@ -36,9 +36,6 @@ public class EngineTask extends Task<Canvas> {
         System.out.println("02");
         update(canvas);
         updateProgress(100, 100);//x getMaxProgress());
-        System.out.println("03 - canvas being returned:" + canvas);
-        updateMessage("03 - canvas being returned:" + canvas);
-
         // TODO - this is keeping newCanvas on heap - fix or else memory problems
         return canvas;
     }

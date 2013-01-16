@@ -3,7 +3,6 @@
  */
 package mandelbrotset;
 
-import Engine.EngineTask;
 import javafx.application.Application;
 import javafx.event.Event;
 import javafx.event.EventHandler;
@@ -11,17 +10,16 @@ import javafx.stage.Stage;
 
 import Model.Model;
 import View.View;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.TimerTask;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Service;
 import javafx.geometry.Point2D;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.input.DragEvent;
 import javafx.scene.input.MouseDragEvent;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 
 /**
  *
@@ -31,28 +29,6 @@ public class MandelbrotSet extends Application {
 
     Model model;
     View view;
-//    EngineTask engine;
-//    private static int START_X = 100;
-//    private static int START_Y = 100;
-//    private static int WIDTH = 400;
-//    private static int HEIGHT = 400;
-//    private int[] palette;
-//    private byte[][] plasma;
-//    private int[] colors;
-//    int times = 410;
-//    private static final double MS_INFINITY = 4.0;
-//    private static final int MAX_ITERS = 20;
-//    private double x = -1.5;
-//    private double y = -1.0;
-//    private double factor = 2.0;
-//    private int iters = MAX_ITERS;
-//    private boolean mouseDragState = false;
-//    private Point2D mouseDragFirstPoint = null;
-    //ProgressBar progress = null;
-//    Group group = null;
-//    double mset_width = 1.0;    // How wide the mandelbrot set is
-//    double mset_height = 1.0;   // How High the mandelbrot set is
-    DoubleProperty workDoneProperty = new SimpleDoubleProperty();
 
     public MandelbrotSet() {
     }
@@ -69,56 +45,65 @@ public class MandelbrotSet extends Application {
         primaryStage.setScene(view.scene);
         primaryStage.setResizable(true);
         primaryStage.show();
-//        ((Service) model.worker).start();
-//        //Canvas newCanvas = model.worker.getValue();
-//        handleNewCanvas();
+        runUpdateTaskAndHandleNewCanvas();
     }
 
     private void hookupEvents() {
         view.updateButton.setOnAction(new EventHandler() {
+            double newX;
+            double newY;
+            double newFactor;
+            double newMSetHeight;
+            double newMSetWidth;
+            int newIters;
+
             @Override
             public void handle(Event t) {
-                System.out.println("handle updateButton");
-                double newX = Double.parseDouble(view.textx.getText());
-                double newY = Double.parseDouble(view.texty.getText());
-                double newFactor = Double.parseDouble(view.textfactor.getText());
-                int newIters = Integer.parseInt(view.textIters.getText());
-                if (newX != model.getX() || newY != model.getY() || newFactor != model.getFactor() || newIters != model.getIters()) {
-                    model.setX(newX);
-                    model.setY(newY);
-                    model.setFactor(newFactor);
-                    model.setIters(newIters);
-                    model.sceneChanged = true;
-                    final Service service = (Service) model.worker;
-                    service.setOnSucceeded(new EventHandler() {
-                        @Override
-                        public void handle(Event t) {
-                            Canvas newCanvas = (Canvas) service.getValue();
-                            System.out.println("Service (updateButton) succeeded - value is:" + newCanvas+", and from worker its:"+model.worker.getValue());
-                            view.replaceCanvas(newCanvas);
-                        }
-                    });
-                    service.restart();
-
-                    // handleNewCanvas();
+                if (changedValues()) {
+                    setChangedValues();
+                    runUpdateTaskAndHandleNewCanvas();
                 }
+            }
 
+            private boolean changedValues() {
+                newX = Double.parseDouble(view.textx.getText());
+                newY = Double.parseDouble(view.texty.getText());
+                newFactor = Double.parseDouble(view.textfactor.getText());
+                newMSetHeight = Double.parseDouble(view.textMSetHeight.getText());
+                newMSetWidth = Double.parseDouble(view.textMSetWidth.getText());
+                newIters = Integer.parseInt(view.textIters.getText());
+
+                System.out.format("model.changedValues - x:%f, y:%f, mSetWidth:%f, MSetHeight:%f, factor:%f, iters:%d\n",
+                        newX, newY, newMSetWidth, newMSetHeight, newFactor, newIters);
+                return (newX != model.getX() || newY != model.getY() || newFactor != model.getFactor() || newIters != model.getIters()
+                        || newMSetHeight != model.getMSet_height() || newMSetWidth != model.getMSet_width());
+
+            }
+
+            private void setChangedValues() {
+                model.setX(newX);
+                model.setY(newY);
+                model.setFactor(newFactor);
+                model.setIters(newIters);
+                model.setMSet_height(newMSetHeight);
+                model.setMSet_width(newMSetWidth);
+                //TODO can gt rid of this
+                model.sceneChanged = true;
             }
         });
 
-        view.canvas.setOnDragDetected(
+        view.transparentcanvas.setOnDragDetected(
                 new EventHandler() {
             // Activate the Drag Event
             @Override
             public void handle(Event t) {
                 System.out.println("DragDetected ");
-                view.canvas.startFullDrag();
+                view.transparentcanvas.startFullDrag();
                 t.consume();
             }
         });
 
-        view.canvas.setOnMouseDragEntered(
-                new EventHandler<MouseDragEvent>() {
+        view.transparentcanvas.setOnMouseDragEntered(new EventHandler<MouseDragEvent>() {
             // Where the drag starts
             @Override
             public void handle(MouseDragEvent t) {
@@ -126,8 +111,18 @@ public class MandelbrotSet extends Application {
                 model.mouseDragFirstPoint = new Point2D(t.getX(), t.getY());
             }
         });
-        view.canvas.setOnMouseDragReleased(
-                new EventHandler<MouseDragEvent>() {
+        view.transparentcanvas.setOnMouseDragged(new EventHandler<MouseEvent>(){
+
+            @Override
+            public void handle(MouseEvent t) {
+              System.out.println("OnMouseDragged x:" + t.getX() + ", y:" + t.getY());
+//                view.transparentcanvas.getGraphicsContext2D().setFill((Paint) Color.RED);
+//                view.transparentcanvas.getGraphicsContext2D().fillRect(model.mouseDragFirstPoint.getX(), model.mouseDragFirstPoint.getX(),
+//                        t.getX(), t.getY());
+            }
+            
+        });
+        view.transparentcanvas.setOnMouseDragReleased(new EventHandler<MouseDragEvent>() {
             // Where the drag ends
             @Override
             public void handle(MouseDragEvent t) {
@@ -141,101 +136,23 @@ public class MandelbrotSet extends Application {
                 model.setMSet_height(model.getMSet_height() * (Math.abs(t.getY() - model.mouseDragFirstPoint.getY()) / (double) model.getStageHEIGHT()));
                 model.setMSet_width(model.getMSet_width() * (Math.abs(t.getX() - model.mouseDragFirstPoint.getX()) / (double) model.getStageWIDTH()));
                 model.sceneChanged = true;
+                runUpdateTaskAndHandleNewCanvas();
             }
         });
     }
 
-    private void handleNewCanvas() {
-        model.worker.workDoneProperty().addListener(new ChangeListener<Number>() {
+    private void runUpdateTaskAndHandleNewCanvas() {
+        final Service service = (Service) model.worker;
+        service.setOnSucceeded(new EventHandler() {
             @Override
-            public void changed(ObservableValue<? extends Number> ov, Number t, Number t1) {
-                System.out.format("work changed - %s, %s to %s\n", ov, t, t1);
-                Canvas newCanvas = model.worker.valueProperty().get();
-                System.out.println("handleNewCanvas - newCanvas:" + newCanvas);
+            public void handle(Event t) {
+                Canvas newCanvas = (Canvas) service.getValue();
+                System.out.println("Service (updateButton) succeeded - value is:" + newCanvas + ", and from worker its:" + model.worker.getValue());
                 view.replaceCanvas(newCanvas);
             }
         });
-
-
+        service.restart();
     }
-//    void update(final Canvas canvas) {
-//        if (!sceneChanged) {
-//            return;
-//        }
-////x        Task task = new Task<Void>() {
-////x            @Override
-////x            public Void call() {
-//        double width = canvas.getWidth();
-//        double height = canvas.getHeight();
-////        int normaliseIters = 0;
-////        int divider = 10;
-////        int blogee = MAX_ITERS;
-//        double x = model.getX();//-0.2;
-//        double xstepfactor = model.getFactor();//0.2;
-//        double stepx = mset_width / width * xstepfactor;
-//        double y = model.getY();//-0.2;
-//        double stepy = mset_height / height * xstepfactor;
-//        int iters = model.getIters();
-//        Color msColor = null;
-////        int maxProgress = (int) (width * height);
-////        int progressStep = 0;
-//        sceneChanged = false;
-//
-//        System.out.format(
-//                "width:%10.4f, height:%10.4f, MSetWidth:%10.4f, MSetHeight:%10.4f, x:%10.4f, y:%10.4f, stepx:%10.4f, factor:%10.4f, iters:%5d\n", width, height, mset_width, mset_height, x, y, stepx, xstepfactor, iters);
-//
-//        for (int row = 0; row < height; row++) {
-////            System.out.println("Row:" + row);
-//            for (int col = 0; col < width; col++) {
-//                Complex c = new Complex(x, y);
-//                //x double c = x;
-//                //x double ci = y;
-//                Complex z = new Complex(0, 0);
-//                //x double z = 0;
-//                //x double zi = 0;
-//
-//                boolean goneInf = true;
-//                int depth = 0;
-//                label_for:
-//                for (; depth < iters; depth++) {
-//                    Complex z_new = z.multiply(z).add(c);
-//                    //x double z_new = (z * z) - (zi * zi) + x;
-//                    //x double z_newi = 2 * z * zi + y;
-//                    if ((z_new.getReal() * z_new.getReal()) + (z_new.getImaginary() + z_new.getImaginary()) > MS_INFINITY) {
-//                        //x if (((z_new * z_new) + (z_newi * z_newi)) > 4) {
-//                        goneInf = false;
-//                        break label_for;
-//                    }
-//                    z = z_new;
-//                }
-////                progressStep++;
-//                //updateProgress(progressStep, maxProgress);
-//                // System.out.print(depth+" ");
-//                if (!goneInf) {
-//                    msColor = getColor(depth);
-//                } else {
-//                    msColor = getColor(0);
-//                }
-////                if (times > 0) {
-////                    //times--;
-////                    System.out.format("col %4d:, row:%4d, x%10.4f:, y:%10.4f, depth:%4d, msColor:%s, c:%s\n", col, row, x, y, depth, msColor, c);
-////                }
-//                canvas.setPixel(col, row, msColor);//new Color(red, green, blue, 0.0));
-//                x += stepx;
-//            }
-//            y += stepy;
-//            x = model.getX();
-//            times = 410;
-//        }
-//        sceneChanged = false;
-////x                return null;
-////x            }
-////x        };
-//        //ProgressBar progress = new ProgressBar();
-//        //group.getChildren().add(progress);
-//        //progress.progressProperty().bind(task.progressProperty());
-//        //x new Thread(task).start();
-//    }
 
     public static void main(String[] args) {
         launch(args);

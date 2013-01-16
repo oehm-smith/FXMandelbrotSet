@@ -25,6 +25,9 @@ import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
 import javafx.scene.text.Text;
+import javafx.util.StringConverter;
+import javafx.util.converter.DoubleStringConverter;
+import javafx.util.converter.IntegerStringConverter;
 
 /**
  *
@@ -44,14 +47,18 @@ public class View {
     public final Label labelIters;
     public final TextField textIters;
     public final Button updateButton;
-    public final Canvas canvas;
+    public Canvas canvas;
+    public Canvas transparentcanvas;    // Sits over the top to receive mouse clicks.
     public final ProgressBar progress;
     public final Label message;
     private int[] palette;
     private byte[][] plasma;
     private int[] colors;
     public Scene scene;
-    public final Label labelCanvas;
+    public final Label labelMSetWidth;
+    public final TextField textMSetWidth;
+    public final Label labelMSetHeight;
+    public final TextField textMSetHeight;
 
     public View(final Model model) {
         this.model = model;
@@ -75,60 +82,53 @@ public class View {
         progress = ProgressBarBuilder.create().minWidth(250).build();
         progress.progressProperty().bind(model.worker.progressProperty());
 
-        labelCanvas = new Label("");
-//        labelCanvas.textProperty().bind(new StringBinding() {
-//            {
-//                super.bind(model.worker.valueProperty());
-//            }
-//
-//            @Override
-//            protected String computeValue() {
-//                final Canvas c = model.worker.getValue();
-//                if (c != null) {
-//                    return c.toString();
-//                }
-//                return "";
-//            }
-//        });
-
-
         labelx = new Label("x");
         textx = new TextField();
-
-        textx.setMaxWidth(
-                80.0);
-        textx.setText(Double.toString(model.getX()));
+        textx.setMaxWidth(80.0);
+        StringConverter scx = new DoubleStringConverter();
+        textx.textProperty().bindBidirectional(model.xProperty(), scx);
 
         labely = new Label("y");
         texty = new TextField();
-
-        texty.setMaxWidth(
-                80.0);
-        texty.setText(Double.toString(model.getY()));
+        texty.setMaxWidth(80.0);
+        StringConverter scy = new DoubleStringConverter();
+        texty.textProperty().bindBidirectional(model.yProperty(), scy);
 
         labelfactor = new Label("Factor");
         textfactor = new TextField();
-
-        textfactor.setMaxWidth(
-                80.0);
-        textfactor.setText(Double.toString(model.getFactor()));
+        textfactor.setMaxWidth(80.0);
+        StringConverter scfactor = new DoubleStringConverter();
+        textfactor.textProperty().bindBidirectional(model.factorProperty(), scfactor);
 
         labelIters = new Label("Iterations");
         textIters = new TextField();
 
-        textIters.setMaxWidth(
-                80.0);
+        textIters.setMaxWidth(80.0);
         textIters.setText(Integer.toString(model.getIters()));
+        StringConverter sciters = new IntegerStringConverter();
+        textIters.textProperty().bindBidirectional(model.itersProperty(), sciters);
 
         message = new Label("x");
 
         message.textProperty()
                 .bind(model.worker.messageProperty());
         updateButton = new Button("Update");
+
+        labelMSetWidth = new Label("MSet Width");
+        textMSetWidth = new TextField();
+        textMSetWidth.setMaxWidth(80.0);
+        StringConverter scmsw = new DoubleStringConverter();
+        textMSetWidth.textProperty().bindBidirectional(model.mset_widthProperty(), scmsw);
+
+        labelMSetHeight = new Label("MSet Height");
+        textMSetHeight = new TextField();
+        textMSetHeight.setMaxWidth(80.0);
+        StringConverter mssch = new DoubleStringConverter();
+        textMSetHeight.textProperty().bindBidirectional(model.mset_heightProperty(), mssch);
         VBox vbox = new VBox(8);
 
         vbox.getChildren()
-                .addAll(progress, labelCanvas, labelx, textx, labely, texty, labelfactor, textfactor, labelIters, textIters, message, updateButton);
+                .addAll(progress, labelx, textx, labely, texty, labelMSetHeight, textMSetHeight, labelMSetWidth, textMSetWidth, labelfactor, textfactor, labelIters, textIters, message, updateButton);
         group.getChildren()
                 .addAll(titleText, vbox);
 
@@ -138,8 +138,13 @@ public class View {
         canvas.setTranslateX(model.getStageOffsetX());
         canvas.setTranslateY(model.getStageOffsetY());
 
-        group.getChildren()
-                .add(canvas);
+        transparentcanvas = new Canvas(model.getWIDTH(), model.getHEIGHT());   //x  model.START_X, model.START_Y, 
+
+        transparentcanvas.setTranslateX(model.getStageOffsetX());
+        transparentcanvas.setTranslateY(model.getStageOffsetY());
+        transparentcanvas.setOpacity(50);
+
+        group.getChildren().addAll(canvas, transparentcanvas);
 
         group.setEffect(ReflectionBuilder.create().input(new DropShadow()).build());  // 10.0, Color.GRAY
 
@@ -166,6 +171,7 @@ public class View {
             newCanvas.setId("the_canvas");
             newCanvas.setTranslateX(model.getStageOffsetX());
             newCanvas.setTranslateY(model.getStageOffsetY());
+            canvas = newCanvas;
         } else {
             throw new RuntimeException("Index for canvas node doesn't exist:" + n);
         }
