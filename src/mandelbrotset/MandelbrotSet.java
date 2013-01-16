@@ -104,23 +104,27 @@ public class MandelbrotSet extends Application {
         });
 
         view.transparentcanvas.setOnMouseDragEntered(new EventHandler<MouseDragEvent>() {
-            // Where the drag starts
+            // Where the drag starts, however now i've added onMouseDragged handler, it can start there
             @Override
             public void handle(MouseDragEvent t) {
                 System.out.println("OnMouseDragEntered - event: " + t.getEventType() + ", x:" + t.getX() + ", y:" + t.getY());
-                model.mouseDragFirstPoint = new Point2D(t.getX(), t.getY());
+                if (model.mouseDragFirstPoint == null) {
+                    model.mouseDragFirstPoint = new Point2D(t.getX(), t.getY());
+                }
             }
         });
-        view.transparentcanvas.setOnMouseDragged(new EventHandler<MouseEvent>(){
-
+        view.transparentcanvas.setOnMouseDragged(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent t) {
-              System.out.println("OnMouseDragged x:" + t.getX() + ", y:" + t.getY());
-//                view.transparentcanvas.getGraphicsContext2D().setFill((Paint) Color.RED);
-//                view.transparentcanvas.getGraphicsContext2D().fillRect(model.mouseDragFirstPoint.getX(), model.mouseDragFirstPoint.getX(),
-//                        t.getX(), t.getY());
+                System.out.println("OnMouseDragged x:" + t.getX() + ", y:" + t.getY());
+                if (model.mouseDragFirstPoint == null) {
+                    model.mouseDragFirstPoint = new Point2D(t.getX(), t.getY());
+                }
+                view.transparentcanvas.getGraphicsContext2D().setStroke((Paint) Color.RED);
+                view.transparentcanvas.getGraphicsContext2D().rect(model.mouseDragFirstPoint.getX(), model.mouseDragFirstPoint.getX(),
+                        t.getX(), t.getY());
+                view.transparentcanvas.getGraphicsContext2D().stroke();
             }
-            
         });
         view.transparentcanvas.setOnMouseDragReleased(new EventHandler<MouseDragEvent>() {
             // Where the drag ends
@@ -136,7 +140,11 @@ public class MandelbrotSet extends Application {
                 model.setMSet_height(model.getMSet_height() * (Math.abs(t.getY() - model.mouseDragFirstPoint.getY()) / (double) model.getStageHEIGHT()));
                 model.setMSet_width(model.getMSet_width() * (Math.abs(t.getX() - model.mouseDragFirstPoint.getX()) / (double) model.getStageWIDTH()));
                 model.sceneChanged = true;
+                view.transparentcanvas.getGraphicsContext2D().clearRect(0, 0, model.getWIDTH(), model.getHEIGHT());
                 runUpdateTaskAndHandleNewCanvas();
+                
+                model.mouseDragFirstPoint = null;
+                
             }
         });
     }
