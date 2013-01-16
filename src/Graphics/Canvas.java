@@ -13,7 +13,9 @@ public class Canvas extends Group {
     private Line[][] pixels;
 
     public Canvas(int x, int y, int width, int height) {
+        System.out.println("a0");
         pixels = new Line[height][];
+        System.out.println("a1");
         for (int row = 0; row < height; row++) {    // width
             pixels[row] = new Line[width];
             for (int col = 0; col < width; col++) { // height
@@ -21,12 +23,17 @@ public class Canvas extends Group {
             }
             getChildren().addAll(pixels[row]);
         }
+        System.out.println("a3");
     }
 
     public void setPixelsData(Line[][] pixels) {
         this.pixels = pixels;
     }
-    
+
+    public Line[][] getPixelsData() {
+        return this.pixels;
+    }
+
     public int getHeight() {
         return pixels.length;
     }
@@ -41,6 +48,7 @@ public class Canvas extends Group {
         }
         return false;
     }
+
     public void setPixel(int x, int y, Color c) {
 //        if (different((Color) pixels[y][x].getStroke(), c)) {
 //            System.out.format("setPixel(%3d,%3d) - stroke changed from %s to %s\n", x,y,pixels[y][x].getStroke(),c);
@@ -55,6 +63,23 @@ public class Canvas extends Group {
                 pixels[y][x].setStroke(Color.rgb((colors[index] >> 16) & 255,
                         (colors[index] >> 8) & 255,
                         colors[index] & 255));
+            }
+        }
+    }
+
+    /**
+     * Copy new pixel data into existing canvas.
+     * @param newPixels
+     * @param widtH
+     * @param heighT 
+     */
+    public void updatePixelsData(Line[][] newPixels, int width, int height) {
+        for (int y =0; y < width; y++) {
+            for (int x = 0 ; x < height; x++) {
+                System.out.format("updatePixelsData - at x,y:%d,%d",x,y);
+                System.out.format("  existing value:%s", pixels[x][y].getStroke());
+                System.out.format("  new value:%s", newPixels[x][y].getStroke());
+                setPixel(y,x, (Color) newPixels[y][x].getStroke());
             }
         }
     }
